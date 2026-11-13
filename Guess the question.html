@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guess the question</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#FBF3F6;
+  --surface:#FFFFFF;
+  --ink:#4A3A56;
+  --ink-soft:#7B6A88;
+  --blush:#F6D5E0;
+  --lav:#DDD4F2;
+  --mint:#D2E9DE;
+  --butter:#FBEDC6;
+  --accent:#A4527A;
+  --on-accent:#FFFFFF;
+  --line:#EBD9E3;
+  --shadow:rgba(120,70,110,.14);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#251D2D;
+    --surface:#33283E;
+    --ink:#F4E8F0;
+    --ink-soft:#C6B4CF;
+    --blush:#5B3A4D;
+    --lav:#453B69;
+    --mint:#32524A;
+    --butter:#5E5232;
+    --accent:#E49BBE;
+    --on-accent:#2A1F33;
+    --line:#4B3D58;
+    --shadow:rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#251D2D;
+  --surface:#33283E;
+  --ink:#F4E8F0;
+  --ink-soft:#C6B4CF;
+  --blush:#5B3A4D;
+  --lav:#453B69;
+  --mint:#32524A;
+  --butter:#5E5232;
+  --accent:#E49BBE;
+  --on-accent:#2A1F33;
+  --line:#4B3D58;
+  --shadow:rgba(0,0,0,.35);
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+*,*::before,*::after{box-sizing:border-box}
+body{
+  margin:0;
+  height:100%;
+  overflow:hidden;
+  background:var(--bg);
+  background-image:
+    radial-gradient(circle at 0% 0%,color-mix(in srgb,var(--blush) 60%,transparent) 0,transparent 34%),
+    radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--lav) 55%,transparent) 0,transparent 38%);
+  background-attachment:fixed;
+  color:var(--ink);
+  font-family:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,.card:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.app{
+  height:100%;
+  max-width:1240px;
+  margin:0 auto;
+  padding:12px 14px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{
+  font-family:"DM Serif Display",Georgia,"Times New Roman",serif;
+  font-weight:400;
+  font-size:clamp(1.5rem,5vw,2.1rem);
+  line-height:1.05;
+  margin:0;
+}
+.right{display:flex;align-items:center;gap:8px}
+.jar{
+  background:var(--surface);
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  padding:5px 14px;
+  font-weight:800;
+  display:flex;align-items:center;gap:6px;
+  box-shadow:0 4px 12px var(--shadow);
+}
+.jar.pop{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.14) rotate(-3deg)}100%{transform:scale(1)}}
+.round{
+  width:36px;height:36px;border-radius:50%;
+  border:1.5px solid var(--line);
+  background:var(--surface);
+  font-weight:800;
+  display:grid;place-items:center;
+  padding:0;
+}
+
+/* filters */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  background:var(--surface);
+  border:1.5px solid var(--line);
+  border-radius:999px;
+  padding:5px 13px;
+  font-weight:600;
+  font-size:.9rem;
+  transition:background .2s,border-color .2s;
+  white-space:nowrap;
+}
+.chip[aria-pressed="true"]{background:var(--lav);border-color:var(--accent)}
+.chip.hard[aria-pressed="true"]{background:var(--blush)}
+.chip.act{background:var(--butter);border-color:transparent}
+.chip.act:hover{border-color:var(--accent)}
+.chip.glow{animation:glow 1.3s ease-in-out infinite}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(164,82,122,.0)}50%{box-shadow:0 0 0 6px rgba(164,82,122,.25)}}
+.sep{width:1px;background:var(--line);margin:2px 3px;flex:none}
+
+/* the table of cards fills the whole screen */
+.play{flex:1;min-height:0}
+.hand{
+  height:100%;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(2,1fr);
+  gap:12px;
+}
+.card{
+  position:relative;
+  perspective:900px;
+  border-radius:22px;
+  min-height:0;
+  container-type:inline-size;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.card.deal,.card.fly-in{animation:deal .6s cubic-bezier(.25,1.15,.4,1) both;animation-delay:calc(var(--i,0) * 80ms)}
+@keyframes deal{from{opacity:0;transform:translate(70%,-90%) rotate(16deg) scale(.7)}to{opacity:1;transform:none}}
+.card.fly-out{animation:flyout .55s cubic-bezier(.5,0,.9,.5) both;animation-delay:calc(var(--i,0) * 70ms);pointer-events:none}
+@keyframes flyout{from{opacity:1;transform:none}to{opacity:0;transform:translate(var(--fx,-140%),-110%) rotate(var(--fr,-24deg)) scale(.6)}}
+.card.reset .in{transition:none}
+.card:nth-child(odd){rotate:-.7deg}
+.card:nth-child(even){rotate:.7deg}
+.card .in{
+  position:absolute;inset:0;
+  transition:transform .6s cubic-bezier(.3,.7,.2,1);
+  transform-style:preserve-3d;
+}
+.card .face{
+  position:absolute;inset:0;
+  border-radius:22px;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  box-shadow:0 8px 18px var(--shadow), inset 0 0 0 5px rgba(255,255,255,.45);
+}
+.card .front{display:grid;place-items:center}
+.card:nth-child(3n+1) .front{background:var(--blush)}
+.card:nth-child(3n+2) .front{background:var(--lav)}
+.card:nth-child(3n) .front{background:var(--mint)}
+.card .front svg{height:42%;width:auto;max-width:60%;color:var(--accent)}
+
+.card .back{
+  transform:rotateY(180deg);
+  background:var(--butter);
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  text-align:center;
+  overflow:hidden;
+  cursor:pointer;
+}
+.card .back.t-ps{background:var(--butter)}
+.card .back.t-pc{background:var(--lav)}
+.card .back.t-pa{background:var(--blush)}
+.card.done .back{background:var(--mint)}
+.card .star{position:absolute;top:8px;right:11px;font-size:1.25rem;line-height:1;pointer-events:none}
+.card.open .in{transform:rotateY(180deg)}
+.card.open .front{pointer-events:none}
+.card:not(.open) .back{pointer-events:none}
+.card:not(.open):hover .in{transform:translateY(-5px) rotate(-1.5deg)}
+.card.hl .front{box-shadow:0 0 0 4px var(--accent),0 12px 24px var(--shadow)}
+.card.hl{transform:translateY(-6px) scale(1.04);transition:transform .1s}
+
+.tags{
+  display:flex;flex-wrap:wrap;gap:6px;
+  justify-content:center;align-items:center;
+  min-height:26px;
+  padding-right:22px;padding-left:22px;
+}
+.tag{
+  border-radius:999px;
+  padding:2px 11px;
+  font-weight:700;
+  font-size:.78rem;
+  font-size:clamp(.68rem,3.3cqw,.92rem);
+}
+.tag.t,.tag.k{background:color-mix(in srgb,var(--surface) 72%,transparent)}
+.qpop .tag.t{background:var(--lav)}
+.qpop .tag.k{background:var(--mint)}
+.ans{
+  flex:1;
+  min-height:0;
+  display:grid;
+  place-items:center;
+  overflow:auto;
+  font-family:"DM Serif Display",Georgia,serif;
+  font-size:1.2rem;
+  font-size:clamp(1rem,6.4cqw,1.75rem);
+  line-height:1.25;
+}
+.cap{
+  margin:0;
+  color:var(--ink-soft);
+  font-size:.82rem;
+  font-weight:700;
+}
+.acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.mini{
+  border-radius:999px;
+  border:1.5px solid var(--accent);
+  background:transparent;
+  color:var(--accent);
+  padding:4px 12px;
+  font-weight:700;
+  font-size:.8rem;
+  font-size:clamp(.72rem,3.6cqw,.95rem);
+}
+.mini.primary{background:var(--accent);color:var(--on-accent)}
+.mini:hover{transform:translateY(-1px)}
+
+/* popup: the answer and its example questions together */
+.qpop-back{
+  position:fixed;inset:0;
+  background:rgba(40,25,50,.42);
+  display:grid;place-items:center;
+  padding:18px;
+  z-index:22;
+}
+.qpop-back[hidden]{display:none}
+.qpop{
+  width:min(580px,100%);
+  max-height:100%;
+  overflow:auto;
+  background:var(--surface);
+  border-radius:28px;
+  padding:20px 22px 18px;
+  box-shadow:0 20px 50px rgba(30,15,40,.35);
+  animation:popin .35s cubic-bezier(.3,1.25,.5,1) both;
+}
+@keyframes popin{from{opacity:0;transform:translate(var(--dx,0),var(--dy,0)) scale(.4)}to{opacity:1;transform:none}}
+.qpop .tags{padding:0;margin-bottom:10px;justify-content:flex-start}
+.qpop .tag{font-size:.9rem}
+.qpop .said{
+  background:var(--butter);
+  border-radius:22px 22px 22px 6px;
+  padding:14px 18px;
+  font-family:"DM Serif Display",Georgia,serif;
+  font-size:clamp(1.2rem,4.4vw,1.65rem);
+  line-height:1.3;
+}
+.qpop h3{margin:16px 0 8px;font-size:.95rem;color:var(--ink-soft)}
+.qpop ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.qpop li{
+  background:var(--lav);
+  border-radius:16px;
+  padding:9px 14px;
+  font-weight:700;
+  font-size:clamp(1rem,3.6vw,1.2rem);
+}
+.qpop .tip{margin-top:10px;font-size:.88rem;color:var(--ink-soft)}
+.qpop .acts{margin-top:16px;justify-content:flex-end}
+.qpop .mini{font-size:.95rem;padding:7px 16px}
+
+@container (max-width:200px){
+  .cap{display:none}
+  .back{padding:9px 9px}
+}
+
+/* toast */
+#toast{
+  position:fixed;
+  left:50%;
+  bottom:calc(14px + env(safe-area-inset-bottom,0px));
+  transform:translate(-50%,24px);
+  background:var(--accent);
+  color:var(--on-accent);
+  font-weight:800;
+  padding:10px 20px;
+  border-radius:999px;
+  box-shadow:0 8px 22px var(--shadow);
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .25s,transform .25s;
+  z-index:25;
+  max-width:92vw;
+  text-align:center;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* little burst when a question is correct */
+.pf{
+  position:fixed;
+  z-index:20;
+  pointer-events:none;
+  font-size:1.3rem;
+  animation:pf .95s ease-out forwards;
+}
+@keyframes pf{
+  from{opacity:1;transform:translate(0,0) scale(.6)}
+  to{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.2) rotate(40deg)}
+}
+
+/* teacher overlay */
+.overlay{
+  position:fixed;inset:0;
+  background:rgba(40,25,50,.45);
+  display:grid;place-items:center;
+  padding:20px;
+  z-index:30;
+}
+.overlay[hidden]{display:none}
+.sheet{
+  background:var(--surface);
+  border-radius:24px;
+  padding:20px 22px;
+  max-width:540px;
+  max-height:100%;
+  overflow:auto;
+}
+.sheet h2{font-family:"DM Serif Display",Georgia,serif;font-weight:400;font-size:1.5rem;margin:0 0 8px}
+.sheet ol{margin:6px 0 10px;padding-left:22px}
+.sheet li{margin-bottom:5px}
+.sheet p{margin:8px 0}
+.actions{display:flex;flex-wrap:wrap;gap:8px;padding-top:6px}
+.btn{
+  border-radius:999px;
+  border:1.5px solid var(--accent);
+  padding:8px 16px;
+  font-weight:700;
+  background:transparent;
+  color:var(--accent);
+}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
+
+@media (prefers-reduced-motion: reduce){
+  .jar.pop,.card.deal,.card.fly-in,.card.fly-out,.chip.glow,.qpop{animation:none}
+  .card .in{transition-duration:.01ms}
+  .pf{display:none}
+  #toast{transition:none}
+}
+
+/* phones in portrait: 2 columns x 3 rows, filters scroll sideways to save space */
+@media (max-width:720px), (max-aspect-ratio:1/1){
+  .hand{grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(3,1fr);gap:9px}
+  .chips{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none}
+}
+@media (max-height:560px){
+  .top h1{font-size:1.4rem}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="bow" viewBox="0 0 100 70">
+    <path d="M50 35 C34 6 6 6 8 30 C10 54 34 52 50 35 Z" fill="currentColor" opacity=".92"/>
+    <path d="M50 35 C66 6 94 6 92 30 C90 54 66 52 50 35 Z" fill="currentColor" opacity=".92"/>
+    <path d="M47 40 L36 66 L46 61 L50 68 L52 44 Z" fill="currentColor" opacity=".75"/>
+    <path d="M53 40 L64 66 L54 61 L50 68 L48 44 Z" fill="currentColor" opacity=".75"/>
+    <circle cx="50" cy="35" r="9" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<div class="app">
+  <header class="top">
+    <h1>Guess the question</h1>
+    <div class="right">
+      <div class="jar" id="jar" aria-live="polite">⭐ <span id="stars">0</span></div>
+      <button class="round" id="help" type="button" aria-label="Notes for the teacher">?</button>
+    </div>
+  </header>
+
+  <div class="chips" id="filters" role="group" aria-label="Choose a tense"></div>
+
+  <div class="play">
+    <div class="hand" id="hand"></div>
+  </div>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div class="qpop-back" id="qpop" hidden></div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ht">
+    <h2 id="ht">Для учителя</h2>
+    <ol>
+      <li>Ученица нажимает на закрытую карточку, и она переворачивается. На карточке видны ответ, время и тип вопроса. Можно открыть сколько угодно карточек, они остаются открытыми.</li>
+      <li>Задача: придумать вопрос, на который это ответ. Кнопка «💡 Examples» открывает окно: сверху ответ с карточки, под ним примеры вопросов (закрыть: Close или нажать на фон). В hard mode время и тип скрыты, их можно открыть кнопкой «Show hints».</li>
+      <li>«⭐ Correct!» ставит на карточку звёздочку и даёт балл. Каждые 5 звёзд: виртуальный латте ☕.</li>
+      <li>Если нажать на саму открытую карточку (не на кнопки), она улетает, а на её место прилетает новая. Сразу после открытия карточка около секунды не реагирует на нажатие, чтобы она не улетела случайно.</li>
+      <li>«🎲 Pick for me» сам открывает одну из закрытых карточек. «🔀 New cards» заменяет все шесть.</li>
+    </ol>
+    <p><b>Советы.</b> Сначала пусть сама найдёт и исправит ошибку, и только потом открывайте примеры. Фильтр помогает отрабатывать одно время за раз. Можно поменяться ролями: она придумывает смешной ответ, а вы задаёте вопрос (иногда с ошибкой, чтобы она поймала).</p>
+    <div class="actions">
+      <button class="btn" id="reset" type="button">Stars back to 0</button>
+      <button class="btn primary" id="close" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var TENSES = {ps:"Present Simple", pc:"Present Continuous", pa:"Past Simple"};
+  var KINDS  = {wh:"Wh-question", yn:"Yes / No question"};
+  var NOSUBJ = "Подсказка: в вопросе к подлежащему (Who …?) нет did, глагол сразу во 2-й форме.";
+
+  var CARDS = [
+    /* Present Simple */
+    {t:"ps",k:"wh",a:"Because my cat wants breakfast at five o’clock.",q:["Why do you wake up early?","Why does she wake up at five?"]},
+    {t:"ps",k:"yn",a:"Yes, she does. She drinks three coffees every day!",q:["Does she like coffee?","Does she drink coffee every day?"]},
+    {t:"ps",k:"wh",a:"At seven, but only on sunny days.",q:["What time do you get up?","When do you get up?"]},
+    {t:"ps",k:"yn",a:"No, they don’t. They only eat salad and take photos of it.",q:["Do they eat pizza?","Do your friends eat burgers?"]},
+    {t:"ps",k:"wh",a:"My grandma. She knows everything about everybody.",q:["Who knows everything about everybody?","Who knows all the news?"],tip:"Who + глагол в Present Simple для he/she: knows."},
+    {t:"ps",k:"wh",a:"Every Sunday. I watch movies in my pyjamas.",q:["When do you watch movies?","What do you wear when you watch movies?"]},
+    {t:"ps",k:"yn",a:"Yes, it does. It smells like vanilla and chocolate.",q:["Does your perfume smell nice?","Does it smell good?"]},
+    {t:"ps",k:"wh",a:"Two. One for me and one for my best friend.",q:["How many coffees do you buy?","How many cakes do you buy?"]},
+    {t:"ps",k:"wh",a:"In my bag, under ten lipsticks.",q:["Where do you put your phone?","Where does she put her keys?"]},
+    {t:"ps",k:"yn",a:"No, he doesn’t. He hates homework.",q:["Does your brother like homework?","Does he do his homework?"]},
+    {t:"ps",k:"wh",a:"Never! Pineapple on pizza is horrible.",q:["How often do you eat pineapple on pizza?","How often does she eat pineapple pizza?"]},
+    {t:"ps",k:"wh",a:"Because it makes my hair soft and shiny.",q:["Why do you use this shampoo?","Why does she like this shampoo?"]},
+
+    /* Present Continuous */
+    {t:"pc",k:"wh",a:"I’m making a funny coffee video.",q:["What are you doing?","What are you making?"]},
+    {t:"pc",k:"yn",a:"Yes, he is. He’s dancing in the kitchen with a spoon.",q:["Is your dad dancing?","Is he dancing in the kitchen?"]},
+    {t:"pc",k:"yn",a:"No, I’m not. I’m sleeping with my eyes open.",q:["Are you listening to me?","Are you looking at me?"]},
+    {t:"pc",k:"wh",a:"She’s trying on her fifth dress today.",q:["What is she doing?","What is she trying on?"]},
+    {t:"pc",k:"wh",a:"Because it’s raining and my hair looks terrible!",q:["Why are you wearing a hat?","Why are you staying at home?"]},
+    {t:"pc",k:"wh",a:"They’re sitting in the café and drinking pink lattes.",q:["Where are they sitting?","What are they drinking?"]},
+    {t:"pc",k:"yn",a:"Yes, they are. They’re taking selfies with a giraffe.",q:["Are the tourists taking selfies?","Are they taking photos?"]},
+    {t:"pc",k:"wh",a:"My cat is. She’s sitting on my keyboard right now.",q:["Who is sitting on your keyboard?","What is your cat doing?"]},
+    {t:"pc",k:"yn",a:"No, it isn’t. It’s snowing in July!",q:["Is it raining?","Is it sunny today?"]},
+    {t:"pc",k:"wh",a:"I’m waiting for my friend. She’s always late!",q:["Who are you waiting for?","What are you doing?"]},
+    {t:"pc",k:"wh",a:"I’m looking for my charger. My phone is at 1%!",q:["What are you looking for?","What are you doing?"]},
+    {t:"pc",k:"yn",a:"Yes, I am. I’m learning to make coffee with a heart on top.",q:["Are you learning something new?","Are you learning to make coffee?"]},
+
+    /* Past Simple */
+    {t:"pa",k:"wh",a:"My phone! It was in my hand all the time.",q:["What did you lose?","What did you look for?"]},
+    {t:"pa",k:"yn",a:"Yes, I did. I ate five donuts and I felt great!",q:["Did you eat donuts?","Did you eat sweets?"]},
+    {t:"pa",k:"wh",a:"At midnight, because I watched videos.",q:["When did you go to bed?","Why did you go to bed late?"]},
+    {t:"pa",k:"yn",a:"No, she didn’t. She forgot her own birthday!",q:["Did she remember her birthday?","Did your friend remember her birthday?"]},
+    {t:"pa",k:"wh",a:"My cat did. She jumped on the table and broke my cup.",q:["Who broke the cup?","Who jumped on the table?"],tip:NOSUBJ},
+    {t:"pa",k:"wh",a:"I bought a huge pink coat. My mum doesn’t know!",q:["What did you buy?","What did you buy yesterday?"]},
+    {t:"pa",k:"yn",a:"Yes, they did. They sang karaoke for three hours.",q:["Did they sing karaoke?","Did they sing for a long time?"]},
+    {t:"pa",k:"wh",a:"Because I saw a spider as big as a cat!",q:["Why did you shout?","Why did you run away?"]},
+    {t:"pa",k:"wh",a:"In Paris. I ate croissants and took a thousand photos.",q:["Where did you go on holiday?","Where did you eat croissants?"]},
+    {t:"pa",k:"yn",a:"No, I didn’t. I wore my pyjamas to school by mistake!",q:["Did you wear your uniform?","Did you wear jeans to school?"]},
+    {t:"pa",k:"wh",a:"Three. I tried vanilla, coconut and chocolate.",q:["How many perfumes did you try?","How many ice creams did you try?"]},
+    {t:"pa",k:"wh",a:"My grandma. She showed me how to bake cookies.",q:["Who showed you how to bake?","Who showed you how to make cookies?"],tip:NOSUBJ}
+  ];
+
+  var HAND_SIZE = 6;
+  var $ = function(id){return document.getElementById(id)};
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var S = {
+    filter:"all", deck:[], slots:[], els:[],
+    stars:0, hard:false, busy:false, newBtn:null, tt:null, pop:-1
+  };
+
+  function shuffle(a){
+    a = a.slice();
+    for(var i=a.length-1;i>0;i--){
+      var j = Math.floor(Math.random()*(i+1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+  function pool(){
+    return CARDS.filter(function(c){return S.filter==="all" || c.t===S.filter});
+  }
+  function inHand(c){
+    return S.slots.some(function(s){return s.card===c});
+  }
+  function draw(exclude){
+    if(!S.deck.length){
+      S.deck = shuffle(pool().filter(function(c){ return !inHand(c) && c!==exclude; }));
+    }
+    return S.deck.pop() || null;
+  }
+  function allDone(){
+    return S.slots.length>0 && S.slots.every(function(s){return s.done});
+  }
+  function anyBusy(){
+    return S.busy || S.slots.some(function(s){return s.busy});
+  }
+  function updateGlow(){
+    if(S.newBtn) S.newBtn.classList.toggle("glow", allDone());
+  }
+  function toast(msg){
+    var t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(S.tt);
+    S.tt = setTimeout(function(){ t.classList.remove("show"); }, 2800);
+  }
+
+  /* flying cards */
+  function flyVars(el, i){
+    var col = i % (window.matchMedia("(max-width:720px), (max-aspect-ratio:1/1)").matches ? 2 : 3);
+    var left = (col === 0), right = (col === (window.matchMedia("(max-width:720px), (max-aspect-ratio:1/1)").matches ? 1 : 2));
+    el.style.setProperty("--fx", left ? "-150%" : right ? "150%" : "-10%");
+    el.style.setProperty("--fr", left ? "-26deg" : right ? "26deg" : "8deg");
+  }
+
+  /* dealing */
+  function dealAnimated(){
+    if(anyBusy()) return;
+    if(reduce || !S.els.length){ deal(); return; }
+    S.busy = true;
+    S.els.forEach(function(el,i){
+      flyVars(el, i);
+      el.style.setProperty("--i", i);
+      el.classList.remove("deal","fly-in","hl");
+      el.classList.add("fly-out");
+    });
+    setTimeout(function(){ S.busy = false; deal(); }, 550 + (S.els.length-1)*70 + 60);
+  }
+  function deal(){
+    S.deck = shuffle(pool());
+    S.slots = []; S.els = [];
+    var hand = $("hand"); hand.innerHTML = "";
+    for(var i=0;i<HAND_SIZE;i++){
+      S.slots.push({card:draw(), open:false, done:false, peek:false, ex:false, busy:false, at:0});
+    }
+    S.slots.forEach(function(s,i){
+      var el = document.createElement("div");
+      el.className = "card" + (reduce ? "" : " deal");
+      el.tabIndex = 0;
+      el.setAttribute("role","group");
+      el.style.setProperty("--i", i);
+      el.innerHTML = '<div class="in"><div class="face front"><svg aria-hidden="true"><use href="#bow"/></svg></div><div class="face back"></div></div>';
+      el.addEventListener("click", function(e){ onCardClick(i, e); });
+      el.addEventListener("keydown", function(e){
+        if((e.key === "Enter" || e.key === " ") && e.target === el){ e.preventDefault(); cardTap(i); }
+      });
+      hand.appendChild(el);
+      S.els.push(el);
+    });
+    paintAll();
+    updateGlow();
+  }
+
+  /* painting a card */
+  function paintCard(i){
+    var el = S.els[i], s = S.slots[i];
+    el.classList.toggle("open", s.open);
+    el.classList.toggle("done", s.done);
+    el.setAttribute("aria-label", "Card "+(i+1)+(s.open ? (s.done ? ", done" : ", open") : ", closed. Press Enter to open"));
+    var back = el.querySelector(".back");
+    back.setAttribute("aria-hidden", s.open ? "false" : "true");
+    if(!s.card){ back.innerHTML = ""; return; }
+    var c = s.card, hide = S.hard && !s.peek, h = "";
+    back.className = "face back" + (hide ? "" : " t-" + c.t);
+    h += '<div class="tags">';
+    if(hide){
+      h += '<button class="mini" type="button" data-a="peek">Show hints</button>';
+    }else{
+      h += '<span class="tag t">'+TENSES[c.t]+'</span><span class="tag k">'+KINDS[c.k]+'</span>';
+    }
+    h += '</div>';
+    h += '<div class="ans"><span>“'+c.a+'”</span></div>';
+    h += '<p class="cap">What was the question?</p>';
+    h += '<div class="acts">';
+    if(!s.done) h += '<button class="mini primary" type="button" data-a="ok">⭐ Correct!</button>';
+    h += '<button class="mini" type="button" data-a="ex">💡 Examples</button>';
+    h += '</div>';
+    if(s.done) h += '<span class="star" aria-hidden="true">⭐</span>';
+    back.innerHTML = h;
+  }
+  function paintAll(){
+    for(var i=0;i<S.slots.length;i++) paintCard(i);
+  }
+
+  /* clicks */
+  function onCardClick(i, e){
+    var btn = e.target.closest("button[data-a]");
+    if(btn){
+      e.stopPropagation();
+      cardAction(i, btn.getAttribute("data-a"));
+      return;
+    }
+    cardTap(i);
+  }
+  function cardTap(i){
+    var s = S.slots[i];
+    if(anyBusy() || !s.card) return;
+    if(!s.open){
+      openCard(i);
+    }else if(Date.now() - s.at > 700){
+      sendAway(i);
+    }
+  }
+  function openCard(i){
+    var s = S.slots[i];
+    s.open = true; s.at = Date.now(); s.peek = false; s.ex = false;
+    paintCard(i);
+  }
+  function cardAction(i, a){
+    var s = S.slots[i];
+    if(s.busy || S.busy) return;
+    if(a === "peek"){ s.peek = true; paintCard(i); }
+    else if(a === "ex"){ openExamples(i); }
+    else if(a === "ok"){ correct(i); }
+  }
+
+  /* popup: the answer and its example questions together */
+  function openExamples(i){
+    var s = S.slots[i], c = s.card, el = S.els[i];
+    if(!c) return;
+    S.pop = i;
+    var h = '<div class="qpop" role="dialog" aria-modal="true" aria-label="Example questions">';
+    h += '<div class="tags"><span class="tag t">'+TENSES[c.t]+'</span><span class="tag k">'+KINDS[c.k]+'</span></div>';
+    h += '<div class="said">“'+c.a+'”</div>';
+    h += '<h3>Example questions</h3><ul>';
+    c.q.forEach(function(q){ h += '<li>'+q+'</li>'; });
+    h += '</ul>';
+    if(c.tip) h += '<div class="tip">'+c.tip+'</div>';
+    h += '<div class="acts">';
+    if(!s.done) h += '<button class="mini primary" type="button" data-p="ok">⭐ Correct!</button>';
+    h += '<button class="mini" type="button" data-p="close">Close</button>';
+    h += '</div></div>';
+    var box = $("qpop");
+    box.innerHTML = h;
+    var r = el.getBoundingClientRect();
+    var pop = box.firstChild;
+    pop.style.setProperty("--dx", Math.round(r.left + r.width/2 - window.innerWidth/2)+"px");
+    pop.style.setProperty("--dy", Math.round(r.top + r.height/2 - window.innerHeight/2)+"px");
+    box.hidden = false;
+    var cl = box.querySelector('[data-p="close"]'); if(cl) cl.focus();
+  }
+  function closeExamples(){
+    $("qpop").hidden = true; S.pop = -1;
+  }
+
+  function correct(i){
+    var s = S.slots[i];
+    if(!s || s.done) return;
+    s.done = true; S.stars += 1;
+    var cheers = ["Perfect question!","Lovely grammar!","Yes! Exactly!","So good!","Great job!"];
+    var msg = cheers[Math.floor(Math.random()*cheers.length)] + " +1 ⭐";
+    if(S.stars % 5 === 0) msg += "  ☕ Coffee break!";
+    if(allDone()) msg = "All cards done! 🎉 Press New cards";
+    toast(msg);
+    updateStars(true);
+    burst(S.els[i]);
+    paintCard(i);
+    updateGlow();
+  }
+
+  function sendAway(i){
+    var s = S.slots[i], old = s.card, el = S.els[i];
+    if(reduce){
+      s.open = false; s.done = false; s.peek = false; s.ex = false;
+      s.card = draw(old) || old;
+      paintCard(i); updateGlow();
+      return;
+    }
+    s.busy = true;
+    flyVars(el, i);
+    el.style.setProperty("--i", 0);
+    el.classList.remove("deal","fly-in","hl");
+    el.classList.add("fly-out");
+    setTimeout(function(){
+      s.open = false; s.done = false; s.peek = false; s.ex = false;
+      s.card = draw(old) || old;
+      el.classList.add("reset");
+      paintCard(i);
+      void el.offsetWidth;
+      el.classList.remove("fly-out");
+      el.classList.add("fly-in");
+      void el.offsetWidth;
+      el.classList.remove("reset");
+      updateGlow();
+      setTimeout(function(){ el.classList.remove("fly-in"); s.busy = false; }, 700);
+    }, 600);
+  }
+
+  /* filters, hard mode and card actions */
+  function chip(label, cls, pressed, onClick){
+    var b = document.createElement("button");
+    b.className = "chip" + (cls ? " "+cls : ""); b.type = "button"; b.textContent = label;
+    if(pressed !== null) b.setAttribute("aria-pressed", pressed ? "true":"false");
+    b.addEventListener("click", onClick);
+    return b;
+  }
+  function renderFilters(){
+    var opts = [["all","All mixed"],["ps","Present Simple"],["pc","Present Continuous"],["pa","Past Simple"]];
+    var box = $("filters"); box.innerHTML = "";
+    opts.forEach(function(o){
+      box.appendChild(chip(o[1], "", S.filter===o[0], function(){
+        if(anyBusy() || S.filter===o[0]) return;
+        S.filter = o[0]; renderFilters(); dealAnimated();
+      }));
+    });
+    var sep = document.createElement("span"); sep.className = "sep"; box.appendChild(sep);
+    box.appendChild(chip("Hard mode", "hard", S.hard, function(){
+      S.hard = !S.hard;
+      S.slots.forEach(function(s){ s.peek = false; });
+      renderFilters(); paintAll();
+    }));
+    box.appendChild(chip("🎲 Pick for me", "act", null, pickForMe));
+    S.newBtn = chip("🔀 New cards", "act", null, function(){ dealAnimated(); });
+    box.appendChild(S.newBtn);
+    updateGlow();
+  }
+
+  function pickForMe(){
+    if(anyBusy()) return;
+    var closed = [];
+    S.slots.forEach(function(s,i){ if(!s.open) closed.push(i); });
+    if(!closed.length){
+      if(allDone()){ dealAnimated(); }
+      else { toast("All cards are open! Tap one to send it away."); }
+      return;
+    }
+    var chosen = closed[Math.floor(Math.random()*closed.length)];
+    if(reduce || closed.length === 1){ openCard(chosen); return; }
+    S.busy = true;
+    var seq = [];
+    for(var k=0;k<7;k++) seq.push(closed[Math.floor(Math.random()*closed.length)]);
+    seq.push(chosen);
+    var step = 0, prev = -1;
+    var timer = setInterval(function(){
+      if(prev>=0) S.els[prev].classList.remove("hl");
+      if(step >= seq.length){
+        clearInterval(timer);
+        S.busy = false;
+        openCard(chosen);
+        return;
+      }
+      prev = seq[step]; S.els[prev].classList.add("hl"); step++;
+    }, 130);
+  }
+
+  function updateStars(animate){
+    $("stars").textContent = S.stars;
+    if(animate){
+      var j = $("jar"); j.classList.remove("pop"); void j.offsetWidth; j.classList.add("pop");
+    }
+  }
+
+  function burst(el){
+    if(reduce || !el) return;
+    var r = el.getBoundingClientRect();
+    var cx = r.left + r.width/2, cy = r.top + r.height/2;
+    var bits = ["⭐","🎀","✨","💗","⭐","✨","🎀"];
+    bits.forEach(function(e){
+      var sp = document.createElement("span");
+      sp.className = "pf"; sp.textContent = e;
+      sp.style.left = cx+"px"; sp.style.top = cy+"px";
+      var ang = Math.random()*Math.PI*2, dist = 60+Math.random()*70;
+      sp.style.setProperty("--dx", Math.round(Math.cos(ang)*dist)+"px");
+      sp.style.setProperty("--dy", Math.round(Math.sin(ang)*dist-30)+"px");
+      document.body.appendChild(sp);
+      setTimeout(function(){ sp.remove(); }, 1000);
+    });
+  }
+
+  /* teacher notes */
+  $("help").addEventListener("click", function(){ $("overlay").hidden = false; $("close").focus(); });
+  $("close").addEventListener("click", function(){ $("overlay").hidden = true; });
+  $("overlay").addEventListener("click", function(e){ if(e.target === $("overlay")) $("overlay").hidden = true; });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape"){ $("overlay").hidden = true; closeExamples(); } });
+  $("qpop").addEventListener("click", function(e){
+    var b = e.target.closest("button[data-p]");
+    if(b){
+      var a = b.getAttribute("data-p"), k = S.pop;
+      closeExamples();
+      if(a === "ok" && k >= 0) correct(k);
+      return;
+    }
+    if(!e.target.closest(".qpop")) closeExamples();
+  });
+  $("reset").addEventListener("click", function(){ S.stars = 0; updateStars(false); $("overlay").hidden = true; deal(); });
+
+  renderFilters();
+  updateStars(false);
+  deal();
+})();
+</script>
+</body>
+</html>
